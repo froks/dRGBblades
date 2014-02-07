@@ -6,8 +6,14 @@
  */ 
 
 #include <avr/io.h>
+#include <avr/interrupt.h>
 
 #include "lpd8806.h"
+
+
+// Fuses extended 0xFF
+// high 0xDF
+// low 0x62
 
 // CLK Output = PA2
 // Data Output =  PA7
@@ -24,7 +30,8 @@ volatile uint8_t side = 0;
 /* Helper functions */
 
 // Convert separate R,G,B into combined 32-bit GRB color:
-uint32_t Color(uint8_t r, uint8_t g, uint8_t b) {
+uint32_t Color(uint8_t r, uint8_t g, uint8_t b) 
+{
   return ((uint32_t)(r | 0x80) << 16) |
          ((uint32_t)(g | 0x80) <<  8) |
                      b | 0x80 ;
@@ -57,18 +64,21 @@ uint32_t Wheel(uint16_t WheelPos)
   return(Color(r, g, b));
 }
 
-void rainbowCycle(void) {
+void rainbowCycle(void) 
+{
   uint16_t i, j;
 
-  for (j=0; j < 384 * 5; j++) {     // 5 cycles of all 384 colors in the wheel
-    for (i = 0; i < STRIPE_LENGTH; i++) {
+  for (j=0; j < 384 * 5; j++) 
+  {     
+	// 5 cycles of all 384 colors in the wheel
+    for (i = 0; i < STRIPE_LENGTH; i++) 
+	{
       // tricky math! we use each pixel as a fraction of the full 384-color
       // wheel (thats the i / strip.numPixels() part)
       // Then add in j which makes the colors go around per pixel
       // the % 384 is to make the wheel cycle around
 	  lpd8806_set_pixel_rgb(STRIPE_LENGTH - i, Wheel(((i * 384 / STRIPE_LENGTH) + j) % 384));
     }
-	check_adc();
     lpd8806_update_strip();
   }
 }
@@ -85,8 +95,8 @@ void setup_adc(void)
 	ADCSRA = _BV(ADEN) | _BV(ADSC) | _BV(ADATE) | _BV(ADPS2) | _BV(ADPS0); 
 }
 
-uint32_t adcinavg = 0;
-uint32_t adcincount = 0;
+volatile uint32_t adcinavg = 0;
+volatile uint32_t adcincount = 0;
 
 void check_adc(void)
 {
@@ -95,7 +105,7 @@ void check_adc(void)
 	adcinavg += adcin;
 	adcincount++;
 	
-	if (adcincount == 10)
+	if (adcincount >= 10)
 	{
 		uint32_t avg = (adcinavg / adcincount);
 		if (avg < 750)
@@ -108,6 +118,7 @@ void check_adc(void)
 	
 	if (undervoltage > 0)
 	{
+		cli();
 		while(1)
 		{
 			for (uint8_t i = 0; i < STRIPE_LENGTH; ++i)
@@ -156,47 +167,90 @@ void setup_side(void)
 	PORTB &= ~(_BV(PB2));
 }
 
-#define PI 3.14159265
-void wave() {
-	const uint8_t sinTable[STRIPE_LENGTH] = { 63, 43, 24, 10, 2, 0, 5, 17, 33, 53, 74, 94, 110, 122, 127, 125, 117, 103, 84, 63 }; 
-	uint8_t offset = 0;
-	while (1)
+const uint8_t sinTable[STRIPE_LENGTH] = { 63, 43, 24, 10, 2, 0, 5, 17, 33, 53, 74, 94, 110, 122, 127, 125, 117, 103, 84, 63 }; 
+volatile uint8_t wave_offset = 0;
+	
+void wave() 
+{
+	for(uint8_t i = 0; i < STRIPE_LENGTH; ++i) 
 	{
-		for(uint16_t i = 0; i < STRIPE_LENGTH; ++i) {
-			uint8_t c = sinTable[(offset + i) % STRIPE_LENGTH];
-			lpd8806_set_pixel((STRIPE_LENGTH - i), 0, 0, c);
-		}		
-		check_adc();
-		lpd8806_update_strip();
-		++offset;
-		offset = offset % STRIPE_LENGTH;
-		_delay_ms(20);
-	}
+		uint8_t c = sinTable[(wave_offset + i) % STRIPE_LENGTH];
+		lpd8806_set_pixel((STRIPE_LENGTH - i - 1), 0, 0, c);
+	}		
+	lpd8806_update_strip();
+	++wave_offset;
+	wave_offset = wave_offset % STRIPE_LENGTH;
+	_delay_ms(20);
 }	
+
+void setup_timer(void)
+{
+	// Prescale / 1024 (8000000 / 1024 = 7812,5 interrupts per second / 256 = 30 overflows per second
+	TCCR0B |= _BV(CS02) | _BV(CS00);
+	TIMSK0 |= _BV(TOIE0);
+	sei();
+}
+
+volatile uint8_t timer_overflow_counter = 0;
+volatile uint32_t seconds_since_start = 0;
+
+ISR(TIM0_OVF_vect)
+{
+	if ((timer_overflow_counter % 5) == 0)
+	{
+		check_adc();
+	}
+			
+	if (++timer_overflow_counter >= 30)  
+	{
+		timer_overflow_counter = 0;
+		++seconds_since_start;
+	}
+}
 
 int main(void)
 {
-	_delay_ms(100);
+	_delay_ms(20);
 	CLKPR = _BV(CLKPCE); // Remove CLKDIV8 flag
 	CLKPR = 0x0;
 	_delay_ms(10);
 	setup_side();
 	setup_adc();
+	setup_timer();
 	lpd8806_init();
 	lpd8806_set_length(STRIPE_LENGTH);
 	lpd8806_start();
-	check_adc();
+//	check_adc();
 	
-	if (side == 0)
+	if (side == 0) 
 	{
-		while(1) {
+		while (seconds_since_start < 10)
+		{
+			lpd8806_set_pixel(0, 127, 127, 127);
+			lpd8806_set_pixel(STRIPE_LENGTH >> 1, 127, 127, 127);
+			lpd8806_set_pixel(STRIPE_LENGTH - 2, 127, 127, 127);
+			lpd8806_set_pixel(STRIPE_LENGTH - 1, 127, 127, 127);
+			lpd8806_update_strip();
+		}
+		while(1) 
+		{
 			rainbowCycle();
 		}		
 	}
 	else
 	{
-		while(1) {
+		while (seconds_since_start < 10)
+		{
+			lpd8806_set_pixel(0, 127, 0, 127);
+			lpd8806_set_pixel(STRIPE_LENGTH >> 1, 127, 0, 127);
+			lpd8806_set_pixel(STRIPE_LENGTH - 2, 127, 0, 127);
+			lpd8806_set_pixel(STRIPE_LENGTH - 1, 127, 0, 127);
+			lpd8806_update_strip();
+		}
+		while(1) 
+		{
 			wave();
 		}		
 	}
 }
+
