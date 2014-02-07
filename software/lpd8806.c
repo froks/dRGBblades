@@ -7,8 +7,6 @@
 
 #include "lpd8806.h"
 
-#include <string.h>
-
 uint8_t *pixels;
 uint16_t num_leds;
 
@@ -49,15 +47,14 @@ void lpd8806_set_length(uint16_t n)
 
 void lpd8806_start(void)
 {
-	uint8_t i;
-	
 	PORTA &= ~DATAPIN;
-	for(i=((num_leds+31)/32)*8; i>0; i--) {
+	uint8_t i;
+	for (i = ((num_leds+31)/32)*8; i > 0; --i) {
       PORTA |=  CLKPIN;
       PORTA &= ~CLKPIN;
     }	
 	
-	for (i = num_leds; i > 0; i--)
+	for (i = num_leds; i > 0; --i)
 	{
 		lpd8806_set_pixel(i, 0, 0, 0);
 	}
@@ -83,7 +80,7 @@ void lpd8806_set_pixel(uint16_t n, uint8_t r, uint8_t g, uint8_t b)
 	*ptr++ = b | 0x80;
 }
 
-void lpd8806_set_pixel_grb(uint16_t n, uint32_t c)
+void lpd8806_set_pixel_rgb(uint16_t n, uint32_t c)
 {
 	if (n >= num_leds)
 	{

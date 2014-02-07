@@ -6,14 +6,13 @@
  */ 
 
 #include <avr/io.h>
-#include <math.h>
 
 #include "lpd8806.h"
 
 // CLK Output = PA2
 // Data Output =  PA7
 
-#define STRIPE_LENGTH 22
+#define STRIPE_LENGTH 20
 
 void check_adc(void);
 
@@ -26,8 +25,8 @@ volatile uint8_t side = 0;
 
 // Convert separate R,G,B into combined 32-bit GRB color:
 uint32_t Color(uint8_t r, uint8_t g, uint8_t b) {
-  return ((uint32_t)(g | 0x80) << 16) |
-         ((uint32_t)(r | 0x80) <<  8) |
+  return ((uint32_t)(r | 0x80) << 16) |
+         ((uint32_t)(g | 0x80) <<  8) |
                      b | 0x80 ;
 }
 
@@ -36,8 +35,7 @@ uint32_t Color(uint8_t r, uint8_t g, uint8_t b) {
 
 uint32_t Wheel(uint16_t WheelPos)
 {
-  uint8_t r, g, b;
-  r=g=b=0;
+  uint8_t r = 0, g = 0, b = 0;
   switch(WheelPos / 128)
   {
     case 0:
@@ -56,7 +54,7 @@ uint32_t Wheel(uint16_t WheelPos)
       g = 0;                    // green off
       break;
   }
-  return(Color(r,g,b));
+  return(Color(r, g, b));
 }
 
 void rainbowCycle(void) {
@@ -68,7 +66,7 @@ void rainbowCycle(void) {
       // wheel (thats the i / strip.numPixels() part)
       // Then add in j which makes the colors go around per pixel
       // the % 384 is to make the wheel cycle around
-	  lpd8806_set_pixel_grb(STRIPE_LENGTH - i, Wheel(((i * 384 / lpd8806_get_length()) + j) % 384));
+	  lpd8806_set_pixel_rgb(STRIPE_LENGTH - i, Wheel(((i * 384 / STRIPE_LENGTH) + j) % 384));
     }
 	check_adc();
     lpd8806_update_strip();
@@ -114,45 +112,24 @@ void check_adc(void)
 		{
 			for (uint8_t i = 0; i < STRIPE_LENGTH; ++i)
 			{
-				if (side == 0)
-				{
-					if (i == 0)
-					{
-						lpd8806_set_pixel(i, 127, 0, 0);
-					}
-					else if (i == STRIPE_LENGTH - 1)
-					{
-						lpd8806_set_pixel(i, 127, 0, 0);
-					}
-					else if (i == (STRIPE_LENGTH >> 1))
-					{
-						lpd8806_set_pixel(i, 127, 0, 0);
-					}
-					else
-					{
-						lpd8806_set_pixel(i, 0, 0, 0);
-					}
-				}
-				else
-				{
-					if (i == 0)
-					{
-						lpd8806_set_pixel(i, 0, 127, 0);
-					}
-					else if (i == STRIPE_LENGTH - 1)
-					{
-						lpd8806_set_pixel(i, 0, 127, 0);
-					}
-					else if (i == (STRIPE_LENGTH >> 1))
-					{
-						lpd8806_set_pixel(i, 0, 127, 0);
-					}
-					else
-					{
-						lpd8806_set_pixel(i, 0, 0, 0);
-					}
-				}
+				lpd8806_set_pixel(i, 0, 0, 0);
 			}
+			uint8_t r, g, b;
+			if (side == 0)
+			{
+				r = 127;
+				g = 0;
+				b = 0;
+			}
+			else
+			{
+				r = 0;
+				g = 127;
+				b = 0;
+			}
+			lpd8806_set_pixel(0, r, g, b);
+			lpd8806_set_pixel(STRIPE_LENGTH - 1, r, g, b);
+			lpd8806_set_pixel(STRIPE_LENGTH >> 1, r, g, b);
 			lpd8806_update_strip();
 		}
 	}
@@ -181,12 +158,7 @@ void setup_side(void)
 
 #define PI 3.14159265
 void wave() {
-	uint8_t sinTable[STRIPE_LENGTH];
-	float s = -PI;
-	for(uint8_t i = 0; i < STRIPE_LENGTH; ++i) {
-		sinTable[i] = ((sin(s) + 1.0) / 2.0) * 127;
-		s += (float)(PI/STRIPE_LENGTH);
-	}
+	const uint8_t sinTable[STRIPE_LENGTH] = { 63, 43, 24, 10, 2, 0, 5, 17, 33, 53, 74, 94, 110, 122, 127, 125, 117, 103, 84, 63 }; 
 	uint8_t offset = 0;
 	while (1)
 	{
@@ -213,7 +185,6 @@ int main(void)
 	lpd8806_init();
 	lpd8806_set_length(STRIPE_LENGTH);
 	lpd8806_start();
-	lpd8806_update_strip();
 	check_adc();
 	
 	if (side == 0)
@@ -225,7 +196,6 @@ int main(void)
 	else
 	{
 		while(1) {
-//			wave(Color(0,0,100), 4);
 			wave();
 		}		
 	}
