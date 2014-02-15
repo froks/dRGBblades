@@ -1,10 +1,3 @@
-/*
- * lpd8806.c
- *
- * Created: 24.08.2013 18:24:48
- *  Author: flo
- */ 
-
 #include "lpd8806.h"
 
 uint8_t *pixels;

@@ -1,11 +1,3 @@
-/*
- * lpd8806.h
- *
- * Created: 24.08.2013 18:25:53
- *  Author: flo
- */ 
-
-
 #ifndef LPD8806_H_
 #define LPD8806_H_
 
