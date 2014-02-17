@@ -19,10 +19,8 @@ int main(void)
 	}
 	else
 	{
-		simple_stripe(10, 127, 0, 127);
 		while (true)
 		{
-			wave(10);
 			rainbowCycle(10);
 		}
 	}

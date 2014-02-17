@@ -6,6 +6,7 @@
 void rainbowCycle(uint16_t duration);
 void wave(uint16_t duration);
 void simple_stripe(uint16_t duration, uint8_t r, uint8_t g, uint8_t b);
+void kitt(uint16_t duration);
 
 void low_battery_lights(uint8_t r, uint8_t g, uint8_t b);
 

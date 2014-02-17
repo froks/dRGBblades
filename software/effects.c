@@ -3,6 +3,10 @@
 #include "lpd8806.h"
 #include "timer.h"
 
+#define DELAY_KITT_MS 20
+#define DELAY_WAVE_MS 20
+#define DELAY_RAINBOWCYCLE_MS 0
+
 // Precalculated sine-table from 0 to 127, in correct stripe-length 
 const uint8_t sinTable[STRIPE_LENGTH] = { 63, 43, 24, 10, 2, 0, 5, 17, 33, 53, 74, 94, 110, 122, 127, 125, 117, 103, 84, 63 }; 
 
@@ -84,6 +88,9 @@ void rainbowCycle(uint16_t duration)
 				lpd8806_set_pixel_rgb(STRIPE_LENGTH - i, Wheel(((i * 384 / STRIPE_LENGTH) + j) % 384));
 			}
 			lpd8806_update_strip();
+			#if DELAY_RAINBOWCYCLE_MS > 0
+			_delay_ms(DELAY_RAINBOWCYCLE_MS);
+			#endif
 			if (elapsed_seconds() - start >= duration) 
 			{
 				break;
@@ -112,7 +119,7 @@ void wave(uint16_t duration)
 		lpd8806_update_strip();
 		++wave_offset;
 		wave_offset = wave_offset % STRIPE_LENGTH;
-		_delay_ms(20);
+		_delay_ms(DELAY_WAVE_MS);
 	}
 }	
 
@@ -132,4 +139,82 @@ void simple_stripe(uint16_t duration, uint8_t r, uint8_t g, uint8_t b)
 		lpd8806_set_pixel(STRIPE_LENGTH - 1, r, g, b);
 		lpd8806_update_strip();
 	}		
+}
+
+void kitt(uint16_t duration)
+{
+	uint16_t start = elapsed_seconds();
+	
+	if (duration == 0) {
+		start = 0;
+	}
+	
+	while (elapsed_seconds() - start < duration)
+	{
+		for (uint8_t index = 0; index < STRIPE_LENGTH - 5; ++index)
+		{
+			for (uint8_t i = 0; i < STRIPE_LENGTH; ++i)
+			{
+				if (i == index) 
+				{
+					lpd8806_set_pixel(i, 30, 0, 0);
+				}
+				else if (i == index + 1) 
+				{
+					lpd8806_set_pixel(i, 60, 0, 0);
+				}
+				else if (i == index + 2) 
+				{
+					lpd8806_set_pixel(i, 127, 0, 0);
+				}
+				else if (i == index + 3) 
+				{
+					lpd8806_set_pixel(i, 60, 0, 0);
+				}
+				else if (i == index + 4) 
+				{
+					lpd8806_set_pixel(i, 30, 0, 0);
+				}
+				else
+				{
+					lpd8806_set_pixel(i, 0, 0, 0);
+				}
+			}
+			lpd8806_update_strip();
+			_delay_ms(DELAY_KITT_MS);
+		}
+		
+		for (uint8_t index = STRIPE_LENGTH - 5; index > 0; --index)
+		{
+			for (uint8_t i = STRIPE_LENGTH - 1; i > 0; --i)
+			{
+				if (i == index) 
+				{
+					lpd8806_set_pixel(i, 30, 0, 0);
+				}
+				else if (i == index + 1) 
+				{
+					lpd8806_set_pixel(i, 60, 0, 0);
+				}
+				else if (i == index + 2) 
+				{
+					lpd8806_set_pixel(i, 127, 0, 0);
+				}
+				else if (i == index + 3) 
+				{
+					lpd8806_set_pixel(i, 60, 0, 0);
+				}
+				else if (i == index + 4) 
+				{
+					lpd8806_set_pixel(i, 30, 0, 0);
+				}
+				else
+				{
+					lpd8806_set_pixel(i, 0, 0, 0);
+				}
+			}
+			lpd8806_update_strip();
+			_delay_ms(DELAY_KITT_MS);
+		}
+	}
 }
