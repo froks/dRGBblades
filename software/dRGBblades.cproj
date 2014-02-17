@@ -35,7 +35,7 @@
     </com_atmel_avrdbg_tool_simulator>
     <ToolchainName>com.Atmel.AVRGCC8.C</ToolchainName>
     <ToolchainFlavour>Native</ToolchainFlavour>
-    <avrtoolinterface>ISP</avrtoolinterface>
+    <avrtoolinterface>debugWIRE</avrtoolinterface>
     <KeepTimersRunning>true</KeepTimersRunning>
     <OverrideVtor>false</OverrideVtor>
     <CacheFlash>true</CacheFlash>
@@ -62,8 +62,9 @@
         <InterfaceProperties>
           <JtagEnableExtResetOnStartSession>false</JtagEnableExtResetOnStartSession>
           <IspClock>223100</IspClock>
+          <DebugWireClockDiv>2000</DebugWireClockDiv>
         </InterfaceProperties>
-        <InterfaceName>ISP</InterfaceName>
+        <InterfaceName>debugWIRE</InterfaceName>
       </ToolOptions>
       <ToolType>com.atmel.avrdbg.tool.avrdragon</ToolType>
       <ToolNumber>00A2000031DA</ToolNumber>

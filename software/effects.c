@@ -47,7 +47,7 @@ uint32_t Wheel(uint16_t WheelPos)
 
 void low_battery_lights(uint8_t r, uint8_t g, uint8_t b)
 {
-	while(1)
+	while (true)
 	{
 		for (uint8_t i = 0; i < STRIPE_LENGTH; ++i)
 		{

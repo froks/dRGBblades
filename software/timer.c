@@ -7,35 +7,40 @@
 volatile uint16_t seconds_since_start = 0;
 volatile uint8_t undervoltage = 0;
 volatile uint8_t timer_overflow_counter = 0;
-volatile uint32_t adcinavg = 0;
-volatile uint32_t adcincount = 0;
+volatile uint16_t adcinavg = 0;
+volatile uint8_t adcincount = 0;
 
 
 void setup_adc(void)
 {
-	ADMUX = _BV(MUX0) | _BV(MUX1); // Use Vcc as Voltage reference, PA3 single ended input
+	// Use Vcc as Voltage reference, PA3 single ended input
+	ADMUX = _BV(MUX1) | _BV(MUX0); 
 	
 	// ADLAR - left adjust the result
 //	ADCSRB = (1 << ADLAR);
 
 	// ADCN (ADC Enable), ADSC (ADC Start Conversion), Prescale Clock / 64
 	// _BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0); 
-	ADCSRA = _BV(ADEN) | _BV(ADSC) | _BV(ADATE) | _BV(ADPS2) | _BV(ADPS0); 
+	ADCSRA = _BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0); 
+	ADCSRA = _BV(ADEN) | _BV(ADSC) | _BV(ADATE);
 }
+
+volatile uint8_t ddd = 0;
 
 void check_adc(void)
 {
 	uint16_t adcin = ((ADCH << 8) | ADCL) & 0x3FF;
 	// 0-1024 = 0 - 5V1; adcvalue = (vin * 1024) / 5.1
 	adcinavg += adcin;
-	adcincount++;
+	adcincount += 1;
 	
 	if (adcincount >= 10)
 	{
 		uint32_t avg = (adcinavg / adcincount);
+
 		if (avg < 750)
 		{
-			undervoltage++;
+			undervoltage = 1;
 		}
 		adcinavg = 0;
 		adcincount = 0;
@@ -44,13 +49,16 @@ void check_adc(void)
 	if (undervoltage > 0)
 	{
 		cli();
-		if (is_top())
+		while (true)
 		{
-			low_battery_lights(127, 0, 0);
-		}
-		else
-		{
-			low_battery_lights(0, 127, 0);
+			if (is_top())
+			{
+				low_battery_lights(127, 0, 0);
+			}
+			else
+			{
+				low_battery_lights(0, 127, 0);
+			}
 		}
 	}
 }
