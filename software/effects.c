@@ -3,9 +3,12 @@
 #include "lpd8806.h"
 #include "timer.h"
 
-#define DELAY_KITT_MS 20
-#define DELAY_WAVE_MS 20
-#define DELAY_RAINBOWCYCLE_MS 0
+#define DELAY_SINGLECOLOR_KITT_MS 20
+#define DELAY_SINGLECOLOR_WAVE_MS 20
+#define DELAY_COLORCYCLE_RAINBOW_MS 0
+#define DELAY_COLORCYCLE_PONG_MS 30
+#define DELAY_COLORCYCLE_ALL_MS 30
+#define DELAY_COLORCYCLE_FILL_REMOVE_EVERY 15
 
 // Precalculated sine-table from 0 to 127, in correct stripe-length 
 const uint8_t sinTable[STRIPE_LENGTH] = { 63, 43, 24, 10, 2, 0, 5, 17, 33, 53, 74, 94, 110, 122, 127, 125, 117, 103, 84, 63 }; 
@@ -64,14 +67,54 @@ void low_battery_lights(uint8_t r, uint8_t g, uint8_t b)
 	}
 }
 
-void rainbowCycle(uint16_t duration) 
+void colorcycle_pong(uint16_t duration) {
+	uint16_t start = elapsed_seconds();
+	
+	if (duration == 0) {
+		duration = 0xFFFF;
+	}
+	
+	uint16_t colorWheelIndex = 0;
+	uint32_t color = 0;
+	uint8_t ballIndex = 2;
+	int8_t ballDirection = 1;
+	
+	while (elapsed_seconds() - start < duration) {
+		color = Wheel(colorWheelIndex);
+		
+		for (uint8_t i = 0; i < STRIPE_LENGTH; ++i) {
+			if (i < 2) {
+				lpd8806_set_pixel_rgb(i, color);
+			} else if (i > STRIPE_LENGTH - 3) {
+				lpd8806_set_pixel_rgb(i, color);
+			} else if (i == ballIndex) {
+				lpd8806_set_pixel_rgb(i, Wheel((colorWheelIndex + 60) % 384));
+			} else {
+				lpd8806_set_pixel(i, 0, 0, 0);
+			}
+		}
+		lpd8806_update_strip();
+		ballIndex = ballIndex + ballDirection;
+		
+		if (ballIndex == 2) {
+			ballDirection = 1;
+			} else if (ballIndex == STRIPE_LENGTH - 3) {
+			ballDirection = -1;
+		}
+		colorWheelIndex++;
+		colorWheelIndex = colorWheelIndex % 384;
+		_delay_ms(DELAY_COLORCYCLE_PONG_MS);
+	}
+}
+
+void colorcycle_rainbow(uint16_t duration) 
 {
 	uint16_t i, j;
 
 	uint16_t start = elapsed_seconds();
 	
 	if (duration == 0) {
-		start = 0;
+		duration = 0xFFFF;
 	}
 	
 	while (elapsed_seconds() - start < duration)
@@ -99,14 +142,89 @@ void rainbowCycle(uint16_t duration)
 	}		
 }
 
-volatile uint8_t wave_offset = 0;
-	
-void wave(uint16_t duration) 
+void colorcycle_fillremove(uint16_t duration)
 {
 	uint16_t start = elapsed_seconds();
 	
 	if (duration == 0) {
-		start = 0;
+		duration = 0xFFFF;
+	}
+	
+	uint16_t outercyclepos = 0;
+	uint16_t barfillcyclepos = 0;
+	int8_t curbarfillpos = 0;
+	int8_t barsfilled = 0;
+	int8_t barfilldir = 1;
+	
+	while (elapsed_seconds() - start < duration)
+	{
+		for (uint8_t i = 0; i < STRIPE_LENGTH; ++i) {
+			if (i > STRIPE_LENGTH - 3) {
+				lpd8806_set_pixel_rgb(i, Wheel(outercyclepos));
+			} else if (i == curbarfillpos || i > STRIPE_LENGTH - 3 - barsfilled) {
+				lpd8806_set_pixel_rgb(i, Wheel(barfillcyclepos));
+			} else {
+				lpd8806_set_pixel(i, 0, 0, 0);
+			}
+		}
+		lpd8806_update_strip();
+		if (outercyclepos % DELAY_COLORCYCLE_FILL_REMOVE_EVERY == 0) {
+			if (barfilldir == 1 && curbarfillpos == STRIPE_LENGTH - 3 - barsfilled) {
+				barsfilled += 1;
+				curbarfillpos = 0;
+				if (barsfilled == STRIPE_LENGTH - 2) {
+					barfilldir = -1;
+					curbarfillpos = STRIPE_LENGTH - 2 - barsfilled;
+				}
+			} else if (curbarfillpos == -1) {
+				barsfilled -= 1;
+				curbarfillpos = STRIPE_LENGTH - 3 - barsfilled;
+				if (barsfilled == -1) {
+					barfilldir = +1;
+					curbarfillpos = 0;
+					barsfilled = 0;
+					barfillcyclepos += 61; // Prime to guarantee lots of different colors
+					barfillcyclepos %= 384;
+				}
+			} else {
+				curbarfillpos += barfilldir;
+			}
+		}
+		outercyclepos += 1;
+//		_delay_ms(100);
+		outercyclepos %= 384;
+	}
+}
+
+void colorcycle_all(uint16_t duration)
+{
+	uint16_t start = elapsed_seconds();
+	
+	if (duration == 0) {
+		duration = 0xFFFF;
+	}
+	
+	uint16_t cyclePos = 0;
+	
+	while (elapsed_seconds() - start < duration) {
+		for (uint8_t i = 0; i < STRIPE_LENGTH; ++i) {
+			lpd8806_set_pixel_rgb(i, Wheel(cyclePos));
+		}
+		cyclePos += 1;
+		cyclePos %= 384;
+		lpd8806_update_strip();
+		_delay_ms(DELAY_COLORCYCLE_ALL_MS);
+	}
+}
+
+volatile uint8_t wave_offset = 0;
+	
+void singlecolor_wave(uint16_t duration) 
+{
+	uint16_t start = elapsed_seconds();
+	
+	if (duration == 0) {
+		duration = 0xFFFF;
 	}
 	
 	while (elapsed_seconds() - start < duration)
@@ -119,16 +237,16 @@ void wave(uint16_t duration)
 		lpd8806_update_strip();
 		++wave_offset;
 		wave_offset = wave_offset % STRIPE_LENGTH;
-		_delay_ms(DELAY_WAVE_MS);
+		_delay_ms(DELAY_SINGLECOLOR_WAVE_MS);
 	}
 }	
 
-void simple_stripe(uint16_t duration, uint8_t r, uint8_t g, uint8_t b)
+void singlecolor_edgemiddle(uint16_t duration, uint8_t r, uint8_t g, uint8_t b)
 {
 	uint16_t start = elapsed_seconds();
 	
 	if (duration == 0) {
-		start = 0;
+		duration = 0xFFFF;
 	}
 	
 	while (elapsed_seconds() - start < duration)
@@ -138,15 +256,16 @@ void simple_stripe(uint16_t duration, uint8_t r, uint8_t g, uint8_t b)
 		lpd8806_set_pixel(STRIPE_LENGTH - 2, r, g, b);
 		lpd8806_set_pixel(STRIPE_LENGTH - 1, r, g, b);
 		lpd8806_update_strip();
+		_delay_ms(100);
 	}		
 }
 
-void kitt(uint16_t duration)
+void singlecolor_kitt(uint16_t duration)
 {
 	uint16_t start = elapsed_seconds();
 	
 	if (duration == 0) {
-		start = 0;
+		duration = 0xFFFF;
 	}
 	
 	while (elapsed_seconds() - start < duration)
@@ -181,7 +300,7 @@ void kitt(uint16_t duration)
 				}
 			}
 			lpd8806_update_strip();
-			_delay_ms(DELAY_KITT_MS);
+			_delay_ms(DELAY_SINGLECOLOR_KITT_MS);
 		}
 		
 		for (uint8_t index = STRIPE_LENGTH - 5; index > 0; --index)
@@ -214,7 +333,24 @@ void kitt(uint16_t duration)
 				}
 			}
 			lpd8806_update_strip();
-			_delay_ms(DELAY_KITT_MS);
+			_delay_ms(DELAY_SINGLECOLOR_KITT_MS);
 		}
+	}
+}
+
+void singlecolor_all(uint16_t duration, uint8_t r, uint8_t g, uint8_t b)
+{
+	uint16_t start = elapsed_seconds();
+	
+	if (duration == 0) {
+		duration = 0xFFFF;
+	}
+	
+	while (elapsed_seconds() - start < duration) {
+		for (uint8_t i = 0; i < STRIPE_LENGTH; ++i) {
+			lpd8806_set_pixel(i, r, g, b);
+		}
+		lpd8806_update_strip();
+		_delay_ms(100);
 	}
 }
