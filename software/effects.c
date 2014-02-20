@@ -217,6 +217,23 @@ void colorcycle_all(uint16_t duration)
 	}
 }
 
+void allpixel_randcolor(uint16_t duration)
+{
+	uint16_t start = elapsed_seconds();
+	
+	if (duration == 0) {
+		duration = 0xFFFF;
+	}
+	
+	while (elapsed_seconds() - start < duration) {
+		for (uint8_t i = 0; i < STRIPE_LENGTH; ++i) {
+			lpd8806_set_pixel_rgb(i, Wheel(rand() % 384));
+		}
+		lpd8806_update_strip();
+	}
+}
+
+
 volatile uint8_t wave_offset = 0;
 	
 void singlecolor_wave(uint16_t duration) 

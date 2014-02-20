@@ -28,8 +28,7 @@ int main(void)
 	{
 		while (true)
 		{
-			colorcycle_all(20);
-			colorcycle_fillremove(20);
+			allpixel_randcolor(100);
 		}
 	}
 }

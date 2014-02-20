@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+void allpixel_randcolor(uint16_t duration);
 void colorcycle_rainbow(uint16_t duration);
 void colorcycle_pong(uint16_t duration);
 void colorcycle_fillremove(uint16_t duration);
