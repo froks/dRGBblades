@@ -5,13 +5,17 @@
 
 #define DELAY_SINGLECOLOR_KITT_MS 20
 #define DELAY_SINGLECOLOR_WAVE_MS 20
+#define DELAY_SINGLECOLOR_ALL_MS 100
 #define DELAY_COLORCYCLE_RAINBOW_MS 0
 #define DELAY_COLORCYCLE_PONG_MS 30
 #define DELAY_COLORCYCLE_ALL_MS 30
 #define DELAY_COLORCYCLE_FILL_REMOVE_EVERY 15
+#define DELAY_COLORCYCLE_WAVE_MS 20
 
 // Precalculated sine-table from 0 to 127, in correct stripe-length 
 const uint8_t sinTable[STRIPE_LENGTH] = { 63, 43, 24, 10, 2, 0, 5, 17, 33, 53, 74, 94, 110, 122, 127, 125, 117, 103, 84, 63 }; 
+volatile uint8_t wave_offset = 0;
+
 
 // In part adapted from the LPD8806-Arduino library by adafruit (https://github.com/adafruit/LPD8806)
 
@@ -20,9 +24,9 @@ const uint8_t sinTable[STRIPE_LENGTH] = { 63, 43, 24, 10, 2, 0, 5, 17, 33, 53, 7
 // Convert separate R,G,B into combined 32-bit GRB color:
 uint32_t Color(uint8_t r, uint8_t g, uint8_t b) 
 {
-  return ((uint32_t)(r | 0x80) << 16) |
-         ((uint32_t)(g | 0x80) <<  8) |
-                     b | 0x80 ;
+  return ((uint32_t)r << 16) |
+         ((uint32_t)g <<  8) |
+                    b;
 }
 
 //Input a value 0 to 384 to get a color value.
@@ -128,7 +132,7 @@ void colorcycle_rainbow(uint16_t duration)
 				// wheel (thats the i / strip.numPixels() part)
 				// Then add in j which makes the colors go around per pixel
 				// the % 384 is to make the wheel cycle around
-				lpd8806_set_pixel_rgb(STRIPE_LENGTH - i, Wheel(((i * 384 / STRIPE_LENGTH) + j) % 384));
+				lpd8806_set_pixel_rgb(STRIPE_LENGTH - i - 1, Wheel(((i * 384 / STRIPE_LENGTH) + j) % 384));
 			}
 			lpd8806_update_strip();
 			#if DELAY_RAINBOWCYCLE_MS > 0
@@ -217,6 +221,40 @@ void colorcycle_all(uint16_t duration)
 	}
 }
 
+void colorcycle_wave(uint16_t duration)
+{
+	uint16_t start = elapsed_seconds();
+	
+	if (duration == 0) {
+		duration = 0xFFFF;
+	}
+	
+	uint16_t colorcylePos = 0;
+	uint8_t cyclered = 0x7F, cyclegreen = 0x7F, cycleblue = 0x7F;
+	
+	uint32_t color;
+	while (elapsed_seconds() - start < duration) {
+		for(uint8_t i = 0; i < STRIPE_LENGTH; ++i)
+		{
+			uint8_t sinval = sinTable[(wave_offset + i) % STRIPE_LENGTH];
+			uint16_t r = cyclered * sinval;
+			uint16_t g = cyclegreen * sinval;
+			uint16_t b = cycleblue * sinval;
+			lpd8806_set_pixel((STRIPE_LENGTH - i - 1), r >> 7, g >> 7, b >> 7);
+		}
+		lpd8806_update_strip();
+		++wave_offset;
+		wave_offset = wave_offset % STRIPE_LENGTH;
+		colorcylePos += 1;
+		colorcylePos %= 384;
+		color = Wheel(colorcylePos);
+		cyclered = ((color & 0xFF0000) >> 16) & 0x7F;
+		cyclegreen = ((color & 0xFF00) >> 8) & 0x7F;
+		cycleblue = (color & 0xFF) & 0x7F;
+		_delay_ms(DELAY_COLORCYCLE_WAVE_MS);
+	}
+}
+
 void allpixel_randcolor(uint16_t duration)
 {
 	uint16_t start = elapsed_seconds();
@@ -234,9 +272,7 @@ void allpixel_randcolor(uint16_t duration)
 }
 
 
-volatile uint8_t wave_offset = 0;
-	
-void singlecolor_wave(uint16_t duration) 
+void singlecolor_wave(uint16_t duration, uint8_t r, uint8_t g, uint8_t b)
 {
 	uint16_t start = elapsed_seconds();
 	
@@ -248,8 +284,8 @@ void singlecolor_wave(uint16_t duration)
 	{
 		for(uint8_t i = 0; i < STRIPE_LENGTH; ++i) 
 		{
-			uint8_t c = sinTable[(wave_offset + i) % STRIPE_LENGTH];
-			lpd8806_set_pixel((STRIPE_LENGTH - i - 1), 0, 0, c);
+			uint8_t sinval = sinTable[(wave_offset + i) % STRIPE_LENGTH];
+			lpd8806_set_pixel((STRIPE_LENGTH - i - 1), (r * sinval) >> 7, (g * sinval) >> 7, (b * sinval) >> 7);
 		}		
 		lpd8806_update_strip();
 		++wave_offset;
@@ -258,7 +294,7 @@ void singlecolor_wave(uint16_t duration)
 	}
 }	
 
-void singlecolor_edgemiddle(uint16_t duration, uint8_t r, uint8_t g, uint8_t b)
+void singlecolor_edgemiddle(uint16_t duration, uint32_t outeredge, uint32_t middle, uint32_t inneredge)
 {
 	uint16_t start = elapsed_seconds();
 	
@@ -268,16 +304,41 @@ void singlecolor_edgemiddle(uint16_t duration, uint8_t r, uint8_t g, uint8_t b)
 	
 	while (elapsed_seconds() - start < duration)
 	{
-		lpd8806_set_pixel(0, r, g, b);
-		lpd8806_set_pixel(STRIPE_LENGTH >> 1, r, g, b);
-		lpd8806_set_pixel(STRIPE_LENGTH - 2, r, g, b);
-		lpd8806_set_pixel(STRIPE_LENGTH - 1, r, g, b);
+		for (uint8_t i = 0; i < STRIPE_LENGTH; ++i) {
+			lpd8806_set_pixel(i, 0, 0, 0);
+		}
+		// inner
+		lpd8806_set_pixel_rgb(0, inneredge);
+		lpd8806_set_pixel_rgb(STRIPE_LENGTH >> 1, middle);
+		lpd8806_set_pixel_rgb(STRIPE_LENGTH - 2, outeredge);
+		lpd8806_set_pixel_rgb(STRIPE_LENGTH - 1, outeredge);
 		lpd8806_update_strip();
 		_delay_ms(100);
 	}		
 }
 
-void singlecolor_kitt(uint16_t duration)
+void singlecolor_kitt_paint(uint8_t index, uint8_t r, uint8_t g, uint8_t b)
+{
+	for (uint8_t i = 0; i < STRIPE_LENGTH; ++i)
+	{
+		if (i == index)
+		{
+			lpd8806_set_pixel(i++, r >> 2, g >> 2, b >> 2);
+			lpd8806_set_pixel(i++, r >> 1, g >> 1, b >> 1);
+			lpd8806_set_pixel(i++, r, g, b);
+			lpd8806_set_pixel(i++, r >> 1, g >> 1, b >> 1);
+			lpd8806_set_pixel(i++, r >> 2, g >> 2, b >> 2);
+		}
+		else if (i > index + 4 || i < index)
+		{
+			lpd8806_set_pixel(i, 0, 0, 0);
+		}
+	}
+	lpd8806_update_strip();
+	_delay_ms(DELAY_SINGLECOLOR_KITT_MS);
+}
+
+void singlecolor_kitt(uint16_t duration, uint8_t r, uint8_t g, uint8_t b)
 {
 	uint16_t start = elapsed_seconds();
 	
@@ -289,68 +350,12 @@ void singlecolor_kitt(uint16_t duration)
 	{
 		for (uint8_t index = 0; index < STRIPE_LENGTH - 5; ++index)
 		{
-			for (uint8_t i = 0; i < STRIPE_LENGTH; ++i)
-			{
-				if (i == index) 
-				{
-					lpd8806_set_pixel(i, 30, 0, 0);
-				}
-				else if (i == index + 1) 
-				{
-					lpd8806_set_pixel(i, 60, 0, 0);
-				}
-				else if (i == index + 2) 
-				{
-					lpd8806_set_pixel(i, 127, 0, 0);
-				}
-				else if (i == index + 3) 
-				{
-					lpd8806_set_pixel(i, 60, 0, 0);
-				}
-				else if (i == index + 4) 
-				{
-					lpd8806_set_pixel(i, 30, 0, 0);
-				}
-				else
-				{
-					lpd8806_set_pixel(i, 0, 0, 0);
-				}
-			}
-			lpd8806_update_strip();
-			_delay_ms(DELAY_SINGLECOLOR_KITT_MS);
+			singlecolor_kitt_paint(index, r, g, b);
 		}
 		
 		for (uint8_t index = STRIPE_LENGTH - 5; index > 0; --index)
 		{
-			for (uint8_t i = STRIPE_LENGTH - 1; i > 0; --i)
-			{
-				if (i == index) 
-				{
-					lpd8806_set_pixel(i, 30, 0, 0);
-				}
-				else if (i == index + 1) 
-				{
-					lpd8806_set_pixel(i, 60, 0, 0);
-				}
-				else if (i == index + 2) 
-				{
-					lpd8806_set_pixel(i, 127, 0, 0);
-				}
-				else if (i == index + 3) 
-				{
-					lpd8806_set_pixel(i, 60, 0, 0);
-				}
-				else if (i == index + 4) 
-				{
-					lpd8806_set_pixel(i, 30, 0, 0);
-				}
-				else
-				{
-					lpd8806_set_pixel(i, 0, 0, 0);
-				}
-			}
-			lpd8806_update_strip();
-			_delay_ms(DELAY_SINGLECOLOR_KITT_MS);
+			singlecolor_kitt_paint(index, r, g, b);
 		}
 	}
 }
@@ -368,6 +373,6 @@ void singlecolor_all(uint16_t duration, uint8_t r, uint8_t g, uint8_t b)
 			lpd8806_set_pixel(i, r, g, b);
 		}
 		lpd8806_update_strip();
-		_delay_ms(100);
+		_delay_ms(DELAY_SINGLECOLOR_ALL_MS);
 	}
 }
