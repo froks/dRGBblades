@@ -13,6 +13,8 @@ void singlecolor_edgemiddle(uint16_t duration, uint32_t outeredge, uint32_t midd
 void singlecolor_kitt(uint16_t duration, uint8_t r, uint8_t g, uint8_t b);
 void singlecolor_wave(uint16_t duration, uint8_t r, uint8_t g, uint8_t b);
 void singlecolor_all(uint16_t duration, uint8_t r, uint8_t g, uint8_t b);
+void allpixel_colorwave(uint16_t duration);
+
 
 void low_battery_lights(uint8_t r, uint8_t g, uint8_t b);
 

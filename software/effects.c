@@ -271,6 +271,41 @@ void allpixel_randcolor(uint16_t duration)
 	}
 }
 
+void allpixel_colorwave(uint16_t duration)
+{
+	uint16_t start = elapsed_seconds();
+	
+	if (duration == 0) {
+		duration = 0xFFFF;
+	}
+	
+	uint8_t rn[STRIPE_LENGTH];
+	
+	uint8_t count = 0;
+	while (elapsed_seconds() - start < duration) {
+		if ((count % 30) == 0) {
+			for (uint8_t i = 0; i < STRIPE_LENGTH; ++i) {
+				rn[i] = rand() % 256;
+			}
+			count = 1;
+		}
+
+		for (uint8_t i = 0; i < STRIPE_LENGTH; ++i) {
+			uint8_t sinval = sinTable[(wave_offset + rn[i]) % STRIPE_LENGTH];
+			uint32_t c = Wheel((rn[i] * 10) % 384);
+			uint8_t r = (c & 0xFF0000) >> 16;
+			uint8_t g = (c & 0xFF00) >> 8;
+			uint8_t b = (c & 0xFF);
+			lpd8806_set_pixel((STRIPE_LENGTH - i - 1), (r * sinval) >> 7, (g * sinval) >> 7, (b * sinval) >> 7);
+		}
+		lpd8806_update_strip();
+		wave_offset += 1;
+		wave_offset %= STRIPE_LENGTH;
+		if (wave_offset == 0) {
+			count += 1;
+		}
+	}
+}
 
 void singlecolor_wave(uint16_t duration, uint8_t r, uint8_t g, uint8_t b)
 {

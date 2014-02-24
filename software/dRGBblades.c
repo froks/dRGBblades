@@ -26,21 +26,14 @@ int main(void)
 		singlecolor_kitt(10, 127, 0, 0);
 		singlecolor_wave(10, 0, 0, 127);
 		singlecolor_all(10, 127, 0, 127);
+		allpixel_colorwave(10);
 	}
 	else
 	{
 		while (true)
 		{
-			allpixel_randcolor(10);
-			colorcycle_rainbow(10);
-			colorcycle_pong(10);
-			colorcycle_fillremove(10);
-			colorcycle_all(10);
-			colorcycle_wave(10);
-			singlecolor_edgemiddle(10, 0xFFFF, 0xFF, 0xFF);
-			singlecolor_kitt(10, 127, 0, 0);
-			singlecolor_wave(10, 0, 0, 127);
-			singlecolor_all(10, 127, 0, 127);
+			allpixel_colorwave(10); 
+//			allpixel_randcolor(20);
 		}
 	}
 }
