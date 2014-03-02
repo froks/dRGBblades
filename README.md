@@ -8,3 +8,9 @@ to power the led stripe and a atmel attiny84 to control the digital side of the 
 
 The DC/DC-converter is based on a LT3436 (http://cds.linear.com/docs/en/datasheet/3436fa.pdf) switching
 regulator.
+
+dRGBblades on a voodoo 600 installed on radix 600mm blades:
+[![voodoo 600 demo fligth](img/flight.png)](http://www.youtube.com/watch?v=HWoczqaCDM8)
+
+dRGBblades stripe only test video:
+[![stripe test video](img/demo.png)](http://www.youtube.com/watch?v=5hTq98XmnZc)

@@ -16,24 +16,22 @@ int main(void)
 	init_all();
 	if (is_top()) 
 	{
-		allpixel_randcolor(10);
-		colorcycle_rainbow(10);
-		colorcycle_pong(10);
-		colorcycle_fillremove(10);
-		colorcycle_all(10);
-		colorcycle_wave(10);
-		singlecolor_edgemiddle(10, 0xFF, 0xFF, 0xFF);
-		singlecolor_kitt(10, 127, 0, 0);
-		singlecolor_wave(10, 0, 0, 127);
-		singlecolor_all(10, 127, 0, 127);
-		allpixel_colorwave(10);
+		singlecolor_edgemiddle(60, 0x7F007F, 0x7F007F, 0x7F007F);
+		while (true)
+		{
+			colorcycle_rainbow(30);
+			colorcycle_pong(20);
+			colorcycle_fillremove(40);
+			colorcycle_wave(30);
+		}
 	}
 	else
 	{
+		singlecolor_edgemiddle(60, 0x7F, 0x7F, 0x7F);
 		while (true)
 		{
-			allpixel_colorwave(10); 
-//			allpixel_randcolor(20);
+			singlecolor_wave(60, 0, 0, 127);
+			singlecolor_edgemiddle(20, 0x7F, 0x7F00, 0x7F0000);
 		}
 	}
 }
