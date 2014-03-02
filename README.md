@@ -10,7 +10,7 @@ The DC/DC-converter is based on a LT3436 (http://cds.linear.com/docs/en/datashee
 regulator.
 
 dRGBblades on a voodoo 600 installed on radix 600mm blades:
-[![voodoo 600 demo fligth](img/fligth.png)](http://www.youtube.com/watch?v=HWoczqaCDM8)
+[![voodoo 600 demo fligth](img/flight.png)](http://www.youtube.com/watch?v=HWoczqaCDM8)
 
 dRGBblades stripe only test video:
 [![stripe test video](img/demo.png)](http://www.youtube.com/watch?v=5hTq98XmnZc)
