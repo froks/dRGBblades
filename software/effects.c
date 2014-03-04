@@ -3,7 +3,6 @@
 #include "lpd8806.h"
 #include "timer.h"
 
-#define DELAY_SINGLECOLOR_KITT_MS 20
 #define DELAY_SINGLECOLOR_WAVE_MS 20
 #define DELAY_SINGLECOLOR_ALL_MS 100
 #define DELAY_COLORCYCLE_RAINBOW_MS 0
@@ -72,6 +71,7 @@ void low_battery_lights(uint8_t r, uint8_t g, uint8_t b)
 }
 
 void colorcycle_pong(uint16_t duration) {
+    lpd8806_starteffect();
 	uint16_t start = elapsed_seconds();
 	
 	if (duration == 0) {
@@ -113,6 +113,7 @@ void colorcycle_pong(uint16_t duration) {
 
 void colorcycle_rainbow(uint16_t duration) 
 {
+    lpd8806_starteffect();
 	uint16_t i, j;
 
 	uint16_t start = elapsed_seconds();
@@ -148,6 +149,7 @@ void colorcycle_rainbow(uint16_t duration)
 
 void colorcycle_fillremove(uint16_t duration)
 {
+    lpd8806_starteffect();
 	uint16_t start = elapsed_seconds();
 	
 	if (duration == 0) {
@@ -202,6 +204,7 @@ void colorcycle_fillremove(uint16_t duration)
 
 void colorcycle_all(uint16_t duration)
 {
+    lpd8806_starteffect();
 	uint16_t start = elapsed_seconds();
 	
 	if (duration == 0) {
@@ -223,6 +226,7 @@ void colorcycle_all(uint16_t duration)
 
 void colorcycle_wave(uint16_t duration)
 {
+    lpd8806_starteffect();
 	uint16_t start = elapsed_seconds();
 	
 	if (duration == 0) {
@@ -255,60 +259,9 @@ void colorcycle_wave(uint16_t duration)
 	}
 }
 
-void allpixel_randcolor(uint16_t duration)
-{
-	uint16_t start = elapsed_seconds();
-	
-	if (duration == 0) {
-		duration = 0xFFFF;
-	}
-	
-	while (elapsed_seconds() - start < duration) {
-		for (uint8_t i = 0; i < STRIPE_LENGTH; ++i) {
-			lpd8806_set_pixel_rgb(i, Wheel(rand() % 384));
-		}
-		lpd8806_update_strip();
-	}
-}
-
-void allpixel_colorwave(uint16_t duration)
-{
-	uint16_t start = elapsed_seconds();
-	
-	if (duration == 0) {
-		duration = 0xFFFF;
-	}
-	
-	uint8_t rn[STRIPE_LENGTH];
-	
-	uint8_t count = 0;
-	while (elapsed_seconds() - start < duration) {
-		if ((count % 30) == 0) {
-			for (uint8_t i = 0; i < STRIPE_LENGTH; ++i) {
-				rn[i] = rand() % 256;
-			}
-			count = 1;
-		}
-
-		for (uint8_t i = 0; i < STRIPE_LENGTH; ++i) {
-			uint8_t sinval = sinTable[(wave_offset + rn[i]) % STRIPE_LENGTH];
-			uint32_t c = Wheel((rn[i] * 10) % 384);
-			uint8_t r = (c & 0xFF0000) >> 16;
-			uint8_t g = (c & 0xFF00) >> 8;
-			uint8_t b = (c & 0xFF);
-			lpd8806_set_pixel((STRIPE_LENGTH - i - 1), (r * sinval) >> 7, (g * sinval) >> 7, (b * sinval) >> 7);
-		}
-		lpd8806_update_strip();
-		wave_offset += 1;
-		wave_offset %= STRIPE_LENGTH;
-		if (wave_offset == 0) {
-			count += 1;
-		}
-	}
-}
-
 void singlecolor_wave(uint16_t duration, uint8_t r, uint8_t g, uint8_t b)
 {
+    lpd8806_starteffect();
 	uint16_t start = elapsed_seconds();
 	
 	if (duration == 0) {
@@ -331,6 +284,7 @@ void singlecolor_wave(uint16_t duration, uint8_t r, uint8_t g, uint8_t b)
 
 void singlecolor_edgemiddle(uint16_t duration, uint32_t outeredge, uint32_t middle, uint32_t inneredge)
 {
+    lpd8806_starteffect();
 	uint16_t start = elapsed_seconds();
 	
 	if (duration == 0) {
@@ -352,51 +306,9 @@ void singlecolor_edgemiddle(uint16_t duration, uint32_t outeredge, uint32_t midd
 	}		
 }
 
-void singlecolor_kitt_paint(uint8_t index, uint8_t r, uint8_t g, uint8_t b)
-{
-	for (uint8_t i = 0; i < STRIPE_LENGTH; ++i)
-	{
-		if (i == index)
-		{
-			lpd8806_set_pixel(i++, r >> 2, g >> 2, b >> 2);
-			lpd8806_set_pixel(i++, r >> 1, g >> 1, b >> 1);
-			lpd8806_set_pixel(i++, r, g, b);
-			lpd8806_set_pixel(i++, r >> 1, g >> 1, b >> 1);
-			lpd8806_set_pixel(i++, r >> 2, g >> 2, b >> 2);
-		}
-		else if (i > index + 4 || i < index)
-		{
-			lpd8806_set_pixel(i, 0, 0, 0);
-		}
-	}
-	lpd8806_update_strip();
-	_delay_ms(DELAY_SINGLECOLOR_KITT_MS);
-}
-
-void singlecolor_kitt(uint16_t duration, uint8_t r, uint8_t g, uint8_t b)
-{
-	uint16_t start = elapsed_seconds();
-	
-	if (duration == 0) {
-		duration = 0xFFFF;
-	}
-	
-	while (elapsed_seconds() - start < duration)
-	{
-		for (uint8_t index = 0; index < STRIPE_LENGTH - 5; ++index)
-		{
-			singlecolor_kitt_paint(index, r, g, b);
-		}
-		
-		for (uint8_t index = STRIPE_LENGTH - 5; index > 0; --index)
-		{
-			singlecolor_kitt_paint(index, r, g, b);
-		}
-	}
-}
-
 void singlecolor_all(uint16_t duration, uint8_t r, uint8_t g, uint8_t b)
 {
+    lpd8806_starteffect();
 	uint16_t start = elapsed_seconds();
 	
 	if (duration == 0) {

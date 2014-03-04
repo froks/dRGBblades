@@ -4,6 +4,8 @@
 
 #include <avr/interrupt.h>
 
+#include "lpd8806.h"
+
 volatile uint16_t seconds_since_start = 0;
 volatile uint8_t undervoltage = 0;
 volatile uint8_t timer_overflow_counter = 0;
@@ -66,9 +68,14 @@ void check_adc(void)
 void setup_timer(void)
 {
 	setup_adc();
-	// Prescale / 1024 (8000000 / 1024 = 7812,5 interrupts per second / 256 = 30 overflows per second
+	// Prescale / 1024 (8000000 / 1024 = 7812,5 interrupts per second / 256 = 30 overflows per second for ADC-Checks and elapsed seconds timer
 	TCCR0B |= _BV(CS02) | _BV(CS00);
 	TIMSK0 |= _BV(TOIE0);
+    
+	// Prescale / 8 (8000000 / 1 = 8000000 interrupts per second / 65536 = 122 overflows per second for alpha-blending effects
+    TCCR1B |= _BV(CS00);
+    TIMSK1 |= _BV(TOIE0);
+    
 	sei();
 }
 
@@ -91,3 +98,7 @@ ISR(TIM0_OVF_vect)
 	}
 }
 
+ISR(TIM1_OVF_vect)
+{
+    lpd8806_effects_isr();
+}
